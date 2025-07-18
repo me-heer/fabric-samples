@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const asset = {
             id: document.getElementById('createAssetId').value,
             color: document.getElementById('createAssetColor').value,
-            size: document.getElementById('createAssetSize').value,
+            size: parseInt(document.getElementById('createAssetSize').value, 10),
             owner: document.getElementById('createAssetOwner').value,
             appraisedValue: parseInt(document.getElementById('createAssetValue').value, 10), // Convert to number
         };
