@@ -33,6 +33,9 @@ const (
 
 	defaultChaincodeName = "basic"
 	defaultChannelName   = "mychannel"
+
+	// Define the port for the Go middleware
+	middlewarePort = "8081" // Set your Go middleware to listen on this port
 )
 
 var (
@@ -56,9 +59,9 @@ type GetAllAssetsResponse struct {
 type CreateAssetRequest struct {
 	ID             string `json:"id"`
 	Color          string `json:"color"`
-	Size           string `json:"size"`
+	Size           int    `json:"size"`
 	Owner          string `json:"owner"`
-	AppraisedValue string `json:"appraisedValue"`
+	AppraisedValue int    `json:"appraisedValue"`
 }
 
 type Asset struct {
@@ -86,19 +89,42 @@ func main() {
 	}
 	defer fabricGateway.Close()
 
-	http.HandleFunc("/api/init-ledger", initLedgerHandler)
-	http.HandleFunc("/api/assets", assetsHandler)
-	http.HandleFunc("/api/assets/", assetByIdHandler)
-	http.HandleFunc("/api/assets/transfer", transferAssetHandler)
-	http.HandleFunc("/api/error-test", errorTestHandler)
+	// Wrap your handlers with the enableCORS middleware
+	http.HandleFunc("/api/init-ledger", enableCORS(initLedgerHandler))
+	http.HandleFunc("/api/assets", enableCORS(assetsHandler))
+	http.HandleFunc("/api/assets/", enableCORS(assetByIdHandler))
+	http.HandleFunc("/api/assets/transfer", enableCORS(transferAssetHandler))
+	http.HandleFunc("/api/error-test", enableCORS(errorTestHandler))
 
+	// Get port from environment variable or use the defined constant
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8081"
+		port = middlewarePort // Use the constant defined for the Go middleware
 	}
 
 	log.Printf("Starting Go middleware server on port %s...", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+// enableCORS is a middleware function that adds CORS headers to responses.
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set the Access-Control-Allow-Origin header to allow requests from any origin.
+		// For production, you should replace "*" with the specific origin(s) of your web application
+		// (e.g., "http://localhost:8000").
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+		// Handle preflight requests (OPTIONS method)
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler in the chain
+		next(w, r)
+	}
 }
 
 func initFabricGateway() error {
@@ -216,11 +242,13 @@ func readFirstFile(dirPath string) ([]byte, error) {
 }
 
 func writeJSONResponse(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+	// CORS headers are now set by the enableCORS middleware
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		// Don't call http.Error here, as headers might already be sent
+		// Instead, just log and possibly write a simple message if possible.
+		fmt.Fprintf(w, "Internal Server Error during JSON encoding")
 	}
 }
 
@@ -329,8 +357,8 @@ func createAssetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" || req.Color == "" || req.Size == "" || req.Owner == "" || req.AppraisedValue == "" {
-		http.Error(w, "Missing required asset fields", http.StatusBadRequest)
+	if req.ID == "" || req.Color == "" || req.Size == 0 || req.Owner == "" || req.AppraisedValue == 0 { // Check int default
+		http.Error(w, "Missing required asset fields or invalid AppraisedValue", http.StatusBadRequest)
 		return
 	}
 
@@ -338,9 +366,9 @@ func createAssetHandler(w http.ResponseWriter, r *http.Request) {
 		"CreateAsset",
 		req.ID,
 		req.Color,
-		req.Size,
+		fmt.Sprintf("%d", req.Size), // Convert int to string for chaincode argument
 		req.Owner,
-		req.AppraisedValue,
+		fmt.Sprintf("%d", req.AppraisedValue), // Convert int to string for chaincode argument
 	)
 	if err != nil {
 		handleFabricError(w, err, fmt.Sprintf("create asset %s", req.ID))
@@ -400,7 +428,6 @@ func transferAssetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We use `_` for the first return value `submitResultBytes` as it's not used here.
 	_, commit, err := fabricContract.SubmitAsync("TransferAsset", client.WithArguments(req.ID, req.NewOwner))
 	if err != nil {
 		handleFabricError(w, err, fmt.Sprintf("transfer asset %s asynchronously", req.ID))
@@ -425,9 +452,6 @@ func transferAssetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !commitStatus.Successful {
-			// commitStatus.Successful is false means there was a problem with committing the transaction.
-			// The error message for why it failed would typically be within the error `err` itself if there was one,
-			// or implied by the `commitStatus.Code`. No direct `Message` field on `client.Status`.
 			log.Printf("Transaction %s failed to commit with status code: %d", commitStatus.TransactionID, int32(commitStatus.Code))
 		} else {
 			log.Printf("Transaction %s committed successfully (async)", commitStatus.TransactionID)
