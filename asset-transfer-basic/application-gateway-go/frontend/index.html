@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Hyperledger Fabric Asset Manager</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+	<div class="container">
+		<h1>Hyperledger Fabric Asset Manager</h1>
+
+		<div class="section">
+			<h2>Initialize Ledger</h2>
+			<p class="warning">Warning: This will reset the ledger to initial state.</p>
+			<button id="initLedgerBtn">Initialize Ledger</button>
+			<p id="initLedgerStatus" class="status-message"></p>
+		</div>
+
+		<div class="section">
+			<h2>All Assets</h2>
+			<button id="refreshAssetsBtn">Refresh All Assets</button>
+			<p id="allAssetsStatus" class="status-message"></p>
+			<div class="asset-list-container">
+				<table id="assetTable">
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Color</th>
+							<th>Size</th>
+							<th>Owner</th>
+							<th>Appraised Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- Assets will be inserted here by JavaScript -->
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>Create New Asset</h2>
+			<form id="createAssetForm">
+				<label for="createAssetId">ID:</label>
+				<input type="text" id="createAssetId" required>
+
+				<label for="createAssetColor">Color:</label>
+				<input type="text" id="createAssetColor" required>
+
+				<label for="createAssetSize">Size:</label>
+				<input type="text" id="createAssetSize" required>
+
+				<label for="createAssetOwner">Owner:</label>
+				<input type="text" id="createAssetOwner" required>
+
+				<label for="createAssetValue">Appraised Value:</label>
+				<input type="number" id="createAssetValue" required>
+
+				<button type="submit">Create Asset</button>
+			</form>
+			<p id="createAssetStatus" class="status-message"></p>
+		</div>
+
+		<div class="section">
+			<h2>Query Asset by ID</h2>
+			<form id="queryAssetForm">
+				<label for="queryAssetId">Asset ID:</label>
+				<input type="text" id="queryAssetId" required>
+				<button type="submit">Query Asset</button>
+			</form>
+			<p id="queryAssetStatus" class="status-message"></p>
+			<pre id="queryAssetResult" class="code-block"></pre>
+		</div>
+
+		<div class="section">
+			<h2>Transfer Asset Ownership</h2>
+			<form id="transferAssetForm">
+				<label for="transferAssetId">Asset ID:</label>
+				<input type="text" id="transferAssetId" required>
+
+				<label for="transferNewOwner">New Owner:</label>
+				<input type="text" id="transferNewOwner" required>
+
+				<button type="submit">Transfer Asset</button>
+			</form>
+			<p id="transferAssetStatus" class="status-message"></p>
+		</div>
+
+		<div class="section">
+			<h2>Error Test</h2>
+			<button id="errorTestBtn">Trigger Error</button>
+			<p id="errorTestStatus" class="status-message"></p>
+			<pre id="errorTestResult" class="code-block"></pre>
+		</div>
+	</div>
+
+	<script src="script.js"></script>
+</body>
+
+</html>
